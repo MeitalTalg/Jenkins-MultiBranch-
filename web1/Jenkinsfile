@@ -1,27 +1,39 @@
 pipeline {
     agent any
 
-    stages {
-        stage('Install Apache') {
+    stages { 
+        stage('Install Docker') {
             steps {
                 script {
-                    echo 'Installing Apache'
-                    sh 'sudo dnf update -y'
-                    sh 'sudo dnf list | grep httpd'
-                    sh 'sudo dnf install -y httpd.x86_64'
-                    sh 'sudo systemctl start httpd.service'
-                    sh 'sudo systemctl enable httpd.service'
-                        }
-                    }
+                    echo 'Installing Docker'
+                    sh '''
+                    sudo yum update -y
+                    sudo yum install -y docker
+                    sudo service docker start
+                    sudo usermod -a -G docker ec2-user
+                    newgrp docker
+                    '''
                 }
+            }
+        }
+
+        stage('Run Nginx with Custom Index.html') {
+            steps {
+                script {
+                    echo 'Running Nginx with a custom index.html'
+                    sh '''
+                    docker run -d -p 8080:80 --name web -v $WORKSPACE/index.html:/usr/share/nginx/html/index.html nginx
+                    '''
+                }
+            }
       
-            stage('Test if its works') {
-                steps {
-                    script {
-                        echo 'Test if its works'
-                        sh 'sudo curl http://localhost:80'
-                        }
+        stage('Test if its works') {
+              steps {
+                script {
+                    echo 'Testing the deployment'
+                    sh 'sudo curl http://localhost:8080'
                     }
                 }
+            }
         }
 }
